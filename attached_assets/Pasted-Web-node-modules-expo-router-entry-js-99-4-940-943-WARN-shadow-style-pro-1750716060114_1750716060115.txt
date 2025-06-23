@@ -1,0 +1,27 @@
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.4% (940/943)
+λ  WARN  "shadow*" style props are deprecated. Use "boxShadow". 
+Web Bundled 3915ms node_modules/expo-router/entry.js (943 modules)
+Error: Unauthorized request from https://bf3954c4-646c-472b-80d5-0c92ea0218c4-00-1m5p008augtbg.janeway.replit.dev:3001. This may happen because of a conflicting browser extension to intercept HTTP requests. Please try again without browser extensions or using incognito mode.
+    at /home/runner/workspace/node_modules/@expo/cli/src/start/server/middleware/CorsMiddleware.ts:27:11
+    at call (/home/runner/workspace/node_modules/connect/index.js:239:7)
+    at next (/home/runner/workspace/node_modules/connect/index.js:183:5)
+    at /home/runner/workspace/node_modules/@expo/cli/src/start/server/middleware/ContextModuleSourceMapsMiddleware.ts:29:7
+    at call (/home/runner/workspace/node_modules/connect/index.js:239:7)
+    at next (/home/runner/workspace/node_modules/connect/index.js:183:5)
+    at middleware (/home/runner/workspace/node_modules/@expo/cli/src/start/server/middleware/ExpoMiddleware.ts:62:16)
+    at call (/home/runner/workspace/node_modules/connect/index.js:239:7)
+    at next (/home/runner/workspace/node_modules/connect/index.js:183:5)
+    at Function.handle (/home/runner/workspace/node_modules/connect/index.js:186:3)
+Web Bundled 798ms node_modules/expo-router/entry.js (868 modules)
+Error: Unauthorized request from https://bf3954c4-646c-472b-80d5-0c92ea0218c4-00-1m5p008augtbg.janeway.replit.dev:3001. This may happen because of a conflicting browser extension to intercept HTTP requests. Please try again without browser extensions or using incognito mode.
+    at /home/runner/workspace/node_modules/@expo/cli/src/start/server/middleware/CorsMiddleware.ts:27:11
+    at call (/home/runner/workspace/node_modules/connect/index.js:239:7)
+    at next (/home/runner/workspace/node_modules/connect/index.js:183:5)
+    at /home/runner/workspace/node_modules/@expo/cli/src/start/server/middleware/ContextModuleSourceMapsMiddleware.ts:29:7
+    at call (/home/runner/workspace/node_modules/connect/index.js:239:7)
+    at next (/home/runner/workspace/node_modules/connect/index.js:183:5)
+    at middleware (/home/runner/workspace/node_modules/@expo/cli/src/start/server/middleware/ExpoMiddleware.ts:62:16)
+    at call (/home/runner/workspace/node_modules/connect/index.js:239:7)
+    at next (/home/runner/workspace/node_modules/connect/index.js:183:5)
+    at Function.handle (/home/runner/workspace/node_modules/connect/index.js:186:3)
+ LOG  [web] Logs will appear in the browser console
