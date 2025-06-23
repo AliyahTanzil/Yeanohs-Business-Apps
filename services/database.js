@@ -37,8 +37,10 @@ export const initDatabase = async () => {
       await insertSampleData();
     }
     console.log('Database initialized successfully');
+    return true;
   } catch (error) {
     console.error('Error initializing database:', error);
+    return false;
   }
 };
 

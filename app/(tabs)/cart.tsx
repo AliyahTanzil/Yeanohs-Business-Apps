@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Image, TextInput } from 'react-native';
 import { getCart, updateCartQuantity, removeFromCart, clearCart, createTransaction, getCustomers } from '@/services/database';
@@ -43,7 +42,7 @@ export default function Cart() {
       removeItem(id);
       return;
     }
-    
+
     try {
       await updateCartQuantity(id, newQuantity);
       loadCart();
@@ -87,11 +86,11 @@ export default function Cart() {
 
       await createTransaction(transaction, cartItems);
       await clearCart();
-      
+
       setCartItems([]);
       setSelectedCustomer(null);
       setReferenceNote('');
-      
+
       Alert.alert('Success', 'Transaction completed successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to complete transaction');
@@ -107,12 +106,12 @@ export default function Cart() {
           <IconSymbol name="photo" size={20} color={colors.background} />
         </View>
       )}
-      
+
       <View style={styles.itemDetails}>
         <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
         <Text style={[styles.itemPrice, { color: colors.tint }]}>${item.price.toFixed(2)}</Text>
       </View>
-      
+
       <View style={styles.quantityContainer}>
         <TouchableOpacity
           style={[styles.quantityButton, { borderColor: colors.border }]}
@@ -128,7 +127,7 @@ export default function Cart() {
           <Text style={[styles.quantityButtonText, { color: colors.text }]}>+</Text>
         </TouchableOpacity>
       </View>
-      
+
       <TouchableOpacity
         style={styles.removeButton}
         onPress={() => removeItem(item.id)}
@@ -307,6 +306,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     marginBottom: 8,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 3,
   },
   itemImage: {
     width: 40,
