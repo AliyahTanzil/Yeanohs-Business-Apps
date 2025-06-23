@@ -20,6 +20,7 @@
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/stack": "^7.4.1",
+    "@sqlite.org/sqlite-wasm": "^3.50.1-build1",
     "expo": "~53.0.9",
     "expo-blur": "~14.1.4",
     "expo-camera": "^16.1.8",
