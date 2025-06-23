@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { getTransactions } from '@/services/database';
@@ -42,89 +41,7 @@ export default function Transactions() {
     }
   };
 
-  const getAmountColor = (type: string) => {
-    switch (type) {
-      case 'sale':
-      case 'credit':
-        return colors.tint;
-      case 'debit':
-        return '#ff4444';
-      default:
-        return colors.text;
-    }
-  };
-
-  const renderTransaction = ({ item }: { item: any }) => (
-    <View style={[styles.transactionCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
-      <View style={styles.transactionHeader}>
-        <View style={styles.transactionInfo}>
-          <View style={styles.transactionTitleRow}>
-            <IconSymbol name={getTransactionIcon(item.type)} size={20} color={colors.tint} />
-            <Text style={[styles.transactionType, { color: colors.text }]}>
-              {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-            </Text>
-          </View>
-          {item.customer_name && (
-            <Text style={[styles.customerName, { color: colors.tabIconDefault }]}>
-              Customer: {item.customer_name}
-            </Text>
-          )}
-          <Text style={[styles.transactionDate, { color: colors.tabIconDefault }]}>
-            {formatDate(item.created_at)}
-          </Text>
-          {item.reference_note && (
-            <Text style={[styles.referenceNote, { color: colors.tabIconDefault }]}>
-              "{item.reference_note}"
-            </Text>
-          )}
-          {item.payment_method && (
-            <Text style={[styles.paymentMethod, { color: colors.tabIconDefault }]}>
-              Payment: {item.payment_method}
-            </Text>
-          )}
-        </View>
-        <View style={styles.amountContainer}>
-          <Text style={[styles.amount, { color: getAmountColor(item.type) }]}>
-            ${item.amount.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Transactions</Text>
-        <TouchableOpacity 
-          style={[styles.refreshButton, { backgroundColor: colors.tint }]}
-          onPress={loadTransactions}
-        >
-          <IconSymbol name="arrow.clockwise" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {transactions.length === 0 ? (
-        <View style={styles.emptyState}>
-          <IconSymbol name="doc.text" size={64} color={colors.tabIconDefault} />
-          <Text style={[styles.emptyStateText, { color: colors.tabIconDefault }]}>
-            No transactions found
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={transactions}
-          renderItem={renderTransaction}
-          keyExtractor={(item) => item.id.toString()}
-          style={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </View>
-  );
-}
-
-  const getTransactionColor = (type) => {
+  const getTransactionColor = (type: string) => {
     switch (type) {
       case 'sale':
         return '#4CAF50';
@@ -137,8 +54,8 @@ export default function Transactions() {
     }
   };
 
-  const renderTransaction = ({ item }) => (
-    <View style={[styles.transactionCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+  const renderTransaction = ({ item }: { item: any }) => (
+    <View style={[styles.transactionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.transactionHeader}>
         <View style={styles.transactionInfo}>
           <View style={styles.transactionTitleRow}>
@@ -151,11 +68,13 @@ export default function Transactions() {
               {item.type.toUpperCase()}
             </Text>
           </View>
-          <Text style={[styles.customerName, { color: colors.tabIconDefault }]}>
-            {item.customerName || 'Unknown Customer'}
-          </Text>
+          {item.customer_name && (
+            <Text style={[styles.customerName, { color: colors.tabIconDefault }]}>
+              Customer: {item.customer_name}
+            </Text>
+          )}
           <Text style={[styles.transactionDate, { color: colors.tabIconDefault }]}>
-            {formatDate(item.date)}
+            {formatDate(item.created_at || item.date)}
           </Text>
         </View>
         <View style={styles.amountContainer}>
@@ -164,16 +83,16 @@ export default function Transactions() {
           </Text>
         </View>
       </View>
-      
-      {item.referenceNote && (
+
+      {(item.reference_note || item.referenceNote) && (
         <Text style={[styles.referenceNote, { color: colors.tabIconDefault }]}>
-          Note: {item.referenceNote}
+          Note: {item.reference_note || item.referenceNote}
         </Text>
       )}
-      
-      {item.paymentMethod && (
+
+      {(item.payment_method || item.paymentMethod) && (
         <Text style={[styles.paymentMethod, { color: colors.tabIconDefault }]}>
-          Payment: {item.paymentMethod.replace('_', ' ').toUpperCase()}
+          Payment: {(item.payment_method || item.paymentMethod).replace('_', ' ').toUpperCase()}
         </Text>
       )}
     </View>

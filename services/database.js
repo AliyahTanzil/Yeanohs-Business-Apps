@@ -1,4 +1,3 @@
-
 import * as SQLite from 'expo-sqlite';
 
 let db = null;
@@ -6,7 +5,7 @@ let db = null;
 export const initDatabase = async () => {
   try {
     db = await SQLite.openDatabaseAsync('sales_calculator.db');
-    
+
     // Create customers table
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS customers (
@@ -60,7 +59,7 @@ export const initDatabase = async () => {
 
     // Insert sample data if tables are empty
     await insertSampleData();
-    
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -78,7 +77,7 @@ const insertSampleData = async () => {
       'INSERT INTO customers (name, phone, email, address, balance) VALUES (?, ?, ?, ?, ?)',
       ['John Doe', '+1234567890', 'john@example.com', '123 Main St', 150.00]
     );
-    
+
     await db.runAsync(
       'INSERT INTO customers (name, phone, email, address, balance) VALUES (?, ?, ?, ?, ?)',
       ['Jane Smith', '+0987654321', 'jane@example.com', '456 Oak Ave', -50.00]
@@ -89,12 +88,12 @@ const insertSampleData = async () => {
       'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
       ['Laptop', 999.99, 10, 'High-performance laptop']
     );
-    
+
     await db.runAsync(
       'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
       ['Mouse', 29.99, 25, 'Wireless optical mouse']
     );
-    
+
     await db.runAsync(
       'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
       ['Keyboard', 79.99, 15, 'Mechanical gaming keyboard']
@@ -235,7 +234,7 @@ export const addToCart = async (productId, quantity = 1) => {
   try {
     // Check if item already exists in cart
     const existingItem = await db.getFirstAsync('SELECT * FROM cart WHERE product_id = ?', [productId]);
-    
+
     if (existingItem) {
       await db.runAsync(
         'UPDATE cart SET quantity = quantity + ? WHERE product_id = ?',
@@ -319,7 +318,7 @@ export const addTransaction = async (transaction) => {
       'INSERT INTO transactions (customer_id, type, amount, reference_note, payment_method) VALUES (?, ?, ?, ?, ?)',
       [transaction.customer_id, transaction.type, transaction.amount, transaction.reference_note, transaction.payment_method]
     );
-    
+
     // Update customer balance
     if (transaction.customer_id) {
       const balanceChange = transaction.type === 'credit' ? transaction.amount : -transaction.amount;
@@ -328,7 +327,7 @@ export const addTransaction = async (transaction) => {
         [balanceChange, transaction.customer_id]
       );
     }
-    
+
     return result.lastInsertRowId;
   } catch (error) {
     console.error('Error adding transaction:', error);
@@ -377,13 +376,13 @@ export const getDashboardStats = async () => {
   try {
     const totalCustomers = await db.getFirstAsync('SELECT COUNT(*) as count FROM customers');
     const totalProducts = await db.getFirstAsync('SELECT COUNT(*) as count FROM products');
-    
+
     const totalSales = await db.getFirstAsync(`
       SELECT COALESCE(SUM(amount), 0) as total 
       FROM transactions 
       WHERE type = 'sale'
     `);
-    
+
     const outstandingBalance = await db.getFirstAsync(`
       SELECT COALESCE(SUM(ABS(balance)), 0) as total 
       FROM customers 
