@@ -1,378 +1,408 @@
 
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabase('sales_calculator.db');
+let db = null;
 
-// Initialize database tables
-export const initDatabase = () => {
-  db.transaction(tx => {
-    // Customers table
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS customers (
+export const initDatabase = async () => {
+  try {
+    db = await SQLite.openDatabaseAsync('sales_calculator.db');
+    
+    // Create customers table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS customers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fullName TEXT NOT NULL,
-        phoneNumber TEXT,
+        name TEXT NOT NULL,
+        phone TEXT,
         email TEXT,
         address TEXT,
-        profileImage TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      );`
-    );
+        image TEXT,
+        balance REAL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-    // Products table
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS products (
+    // Create products table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         price REAL NOT NULL,
-        quantity INTEGER NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
         description TEXT,
         image TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      );`
-    );
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-    // Transactions table
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS transactions (
+    // Create transactions table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customerId INTEGER,
+        customer_id INTEGER,
         type TEXT NOT NULL,
         amount REAL NOT NULL,
-        date DATETIME DEFAULT CURRENT_TIMESTAMP,
-        referenceNote TEXT,
-        paymentMethod TEXT,
-        FOREIGN KEY (customerId) REFERENCES customers (id)
-      );`
-    );
+        reference_note TEXT,
+        payment_method TEXT DEFAULT 'cash',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers (id)
+      );
+    `);
 
-    // Cart table
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS cart (
+    // Create cart table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS cart (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        productId INTEGER,
-        quantity INTEGER NOT NULL,
-        FOREIGN KEY (productId) REFERENCES products (id)
-      );`
-    );
+        product_id INTEGER,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (product_id) REFERENCES products (id)
+      );
+    `);
 
-    // Transaction items table (for detailed breakdown)
-    tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS transaction_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transactionId INTEGER,
-        productId INTEGER,
-        quantity INTEGER NOT NULL,
-        unitPrice REAL NOT NULL,
-        FOREIGN KEY (transactionId) REFERENCES transactions (id),
-        FOREIGN KEY (productId) REFERENCES products (id)
-      );`
-    );
-
-    // Insert sample data
-    insertSampleData();
-  });
+    // Insert sample data if tables are empty
+    await insertSampleData();
+    
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Error initializing database:', error);
+  }
 };
 
-const insertSampleData = () => {
-  // Sample customers
-  db.transaction(tx => {
-    tx.executeSql(
-      'INSERT OR IGNORE INTO customers (id, fullName, phoneNumber, email, address) VALUES (?, ?, ?, ?, ?)',
-      [1, 'John Doe', '+1234567890', 'john@example.com', '123 Main St, City']
-    );
-    tx.executeSql(
-      'INSERT OR IGNORE INTO customers (id, fullName, phoneNumber, email, address) VALUES (?, ?, ?, ?, ?)',
-      [2, 'Jane Smith', '+0987654321', 'jane@example.com', '456 Oak Ave, Town']
-    );
-  });
+const insertSampleData = async () => {
+  try {
+    // Check if we already have data
+    const customerCount = await db.getFirstAsync('SELECT COUNT(*) as count FROM customers');
+    if (customerCount.count > 0) return;
 
-  // Sample products
-  db.transaction(tx => {
-    tx.executeSql(
-      'INSERT OR IGNORE INTO products (id, name, price, quantity, description) VALUES (?, ?, ?, ?, ?)',
-      [1, 'Laptop', 999.99, 10, 'High-performance laptop']
+    // Insert sample customers
+    await db.runAsync(
+      'INSERT INTO customers (name, phone, email, address, balance) VALUES (?, ?, ?, ?, ?)',
+      ['John Doe', '+1234567890', 'john@example.com', '123 Main St', 150.00]
     );
-    tx.executeSql(
-      'INSERT OR IGNORE INTO products (id, name, price, quantity, description) VALUES (?, ?, ?, ?, ?)',
-      [2, 'Mouse', 29.99, 50, 'Wireless optical mouse']
+    
+    await db.runAsync(
+      'INSERT INTO customers (name, phone, email, address, balance) VALUES (?, ?, ?, ?, ?)',
+      ['Jane Smith', '+0987654321', 'jane@example.com', '456 Oak Ave', -50.00]
     );
-    tx.executeSql(
-      'INSERT OR IGNORE INTO products (id, name, price, quantity, description) VALUES (?, ?, ?, ?, ?)',
-      [3, 'Keyboard', 79.99, 25, 'Mechanical keyboard']
+
+    // Insert sample products
+    await db.runAsync(
+      'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
+      ['Laptop', 999.99, 10, 'High-performance laptop']
     );
-  });
+    
+    await db.runAsync(
+      'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
+      ['Mouse', 29.99, 25, 'Wireless optical mouse']
+    );
+    
+    await db.runAsync(
+      'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
+      ['Keyboard', 79.99, 15, 'Mechanical gaming keyboard']
+    );
+
+    console.log('Sample data inserted successfully');
+  } catch (error) {
+    console.error('Error inserting sample data:', error);
+  }
 };
 
 // Customer operations
-export const createCustomer = (customer) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO customers (fullName, phoneNumber, email, address, profileImage) VALUES (?, ?, ?, ?, ?)',
-        [customer.fullName, customer.phoneNumber, customer.email, customer.address, customer.profileImage],
-        (_, result) => resolve(result.insertId),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getCustomers = async () => {
+  try {
+    const customers = await db.getAllAsync('SELECT * FROM customers ORDER BY created_at DESC');
+    return customers;
+  } catch (error) {
+    console.error('Error getting customers:', error);
+    return [];
+  }
 };
 
-export const getCustomers = () => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM customers ORDER BY createdAt DESC',
-        [],
-        (_, result) => resolve(result.rows._array),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getCustomerById = async (id) => {
+  try {
+    const customer = await db.getFirstAsync('SELECT * FROM customers WHERE id = ?', [id]);
+    return customer;
+  } catch (error) {
+    console.error('Error getting customer:', error);
+    return null;
+  }
 };
 
-export const updateCustomer = (id, customer) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'UPDATE customers SET fullName = ?, phoneNumber = ?, email = ?, address = ?, profileImage = ? WHERE id = ?',
-        [customer.fullName, customer.phoneNumber, customer.email, customer.address, customer.profileImage, id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const addCustomer = async (customer) => {
+  try {
+    const result = await db.runAsync(
+      'INSERT INTO customers (name, phone, email, address, image) VALUES (?, ?, ?, ?, ?)',
+      [customer.name, customer.phone, customer.email, customer.address, customer.image]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Error adding customer:', error);
+    throw error;
+  }
 };
 
-export const deleteCustomer = (id) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM customers WHERE id = ?',
-        [id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const updateCustomer = async (id, customer) => {
+  try {
+    await db.runAsync(
+      'UPDATE customers SET name = ?, phone = ?, email = ?, address = ?, image = ? WHERE id = ?',
+      [customer.name, customer.phone, customer.email, customer.address, customer.image, id]
+    );
+  } catch (error) {
+    console.error('Error updating customer:', error);
+    throw error;
+  }
+};
+
+export const deleteCustomer = async (id) => {
+  try {
+    await db.runAsync('DELETE FROM customers WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting customer:', error);
+    throw error;
+  }
 };
 
 // Product operations
-export const createProduct = (product) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'INSERT INTO products (name, price, quantity, description, image) VALUES (?, ?, ?, ?, ?)',
-        [product.name, product.price, product.quantity, product.description, product.image],
-        (_, result) => resolve(result.insertId),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getProducts = async () => {
+  try {
+    const products = await db.getAllAsync('SELECT * FROM products ORDER BY created_at DESC');
+    return products;
+  } catch (error) {
+    console.error('Error getting products:', error);
+    return [];
+  }
 };
 
-export const getProducts = () => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM products ORDER BY createdAt DESC',
-        [],
-        (_, result) => resolve(result.rows._array),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getProductById = async (id) => {
+  try {
+    const product = await db.getFirstAsync('SELECT * FROM products WHERE id = ?', [id]);
+    return product;
+  } catch (error) {
+    console.error('Error getting product:', error);
+    return null;
+  }
 };
 
-export const updateProduct = (id, product) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'UPDATE products SET name = ?, price = ?, quantity = ?, description = ?, image = ? WHERE id = ?',
-        [product.name, product.price, product.quantity, product.description, product.image, id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const addProduct = async (product) => {
+  try {
+    const result = await db.runAsync(
+      'INSERT INTO products (name, price, quantity, description, image) VALUES (?, ?, ?, ?, ?)',
+      [product.name, product.price, product.quantity, product.description, product.image]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Error adding product:', error);
+    throw error;
+  }
 };
 
-export const deleteProduct = (id) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM products WHERE id = ?',
-        [id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const updateProduct = async (id, product) => {
+  try {
+    await db.runAsync(
+      'UPDATE products SET name = ?, price = ?, quantity = ?, description = ?, image = ? WHERE id = ?',
+      [product.name, product.price, product.quantity, product.description, product.image, id]
+    );
+  } catch (error) {
+    console.error('Error updating product:', error);
+    throw error;
+  }
+};
+
+export const deleteProduct = async (id) => {
+  try {
+    await db.runAsync('DELETE FROM products WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    throw error;
+  }
 };
 
 // Cart operations
-export const addToCart = (productId, quantity) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM cart WHERE productId = ?',
-        [productId],
-        (_, result) => {
-          if (result.rows.length > 0) {
-            // Update existing cart item
-            const newQuantity = result.rows._array[0].quantity + quantity;
-            tx.executeSql(
-              'UPDATE cart SET quantity = ? WHERE productId = ?',
-              [newQuantity, productId],
-              (_, updateResult) => resolve(updateResult),
-              (_, error) => reject(error)
-            );
-          } else {
-            // Insert new cart item
-            tx.executeSql(
-              'INSERT INTO cart (productId, quantity) VALUES (?, ?)',
-              [productId, quantity],
-              (_, insertResult) => resolve(insertResult.insertId),
-              (_, error) => reject(error)
-            );
-          }
-        },
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getCartItems = async () => {
+  try {
+    const items = await db.getAllAsync(`
+      SELECT c.*, p.name, p.price, p.description, p.image 
+      FROM cart c 
+      JOIN products p ON c.product_id = p.id
+    `);
+    return items;
+  } catch (error) {
+    console.error('Error getting cart items:', error);
+    return [];
+  }
 };
 
-export const getCart = () => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        `SELECT c.*, p.name, p.price, p.image 
-         FROM cart c 
-         JOIN products p ON c.productId = p.id`,
-        [],
-        (_, result) => resolve(result.rows._array),
-        (_, error) => reject(error)
+export const addToCart = async (productId, quantity = 1) => {
+  try {
+    // Check if item already exists in cart
+    const existingItem = await db.getFirstAsync('SELECT * FROM cart WHERE product_id = ?', [productId]);
+    
+    if (existingItem) {
+      await db.runAsync(
+        'UPDATE cart SET quantity = quantity + ? WHERE product_id = ?',
+        [quantity, productId]
       );
-    });
-  });
+    } else {
+      await db.runAsync(
+        'INSERT INTO cart (product_id, quantity) VALUES (?, ?)',
+        [productId, quantity]
+      );
+    }
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    throw error;
+  }
 };
 
-export const updateCartQuantity = (id, quantity) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'UPDATE cart SET quantity = ? WHERE id = ?',
-        [quantity, id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const updateCartItem = async (id, quantity) => {
+  try {
+    if (quantity <= 0) {
+      await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
+    } else {
+      await db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [quantity, id]);
+    }
+  } catch (error) {
+    console.error('Error updating cart item:', error);
+    throw error;
+  }
 };
 
-export const removeFromCart = (id) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM cart WHERE id = ?',
-        [id],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const removeFromCart = async (id) => {
+  try {
+    await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Error removing from cart:', error);
+    throw error;
+  }
 };
 
-export const clearCart = () => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'DELETE FROM cart',
-        [],
-        (_, result) => resolve(result),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const clearCart = async () => {
+  try {
+    await db.runAsync('DELETE FROM cart');
+  } catch (error) {
+    console.error('Error clearing cart:', error);
+    throw error;
+  }
 };
 
 // Transaction operations
-export const createTransaction = (transaction, cartItems) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      // Insert transaction
-      tx.executeSql(
-        'INSERT INTO transactions (customerId, type, amount, referenceNote, paymentMethod) VALUES (?, ?, ?, ?, ?)',
-        [transaction.customerId, transaction.type, transaction.amount, transaction.referenceNote, transaction.paymentMethod],
-        (_, result) => {
-          const transactionId = result.insertId;
-          
-          // Insert transaction items and update product quantities
-          cartItems.forEach(item => {
-            tx.executeSql(
-              'INSERT INTO transaction_items (transactionId, productId, quantity, unitPrice) VALUES (?, ?, ?, ?)',
-              [transactionId, item.productId, item.quantity, item.price]
-            );
-            
-            // Update product quantity
-            tx.executeSql(
-              'UPDATE products SET quantity = quantity - ? WHERE id = ?',
-              [item.quantity, item.productId]
-            );
-          });
-          
-          resolve(transactionId);
-        },
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getTransactions = async () => {
+  try {
+    const transactions = await db.getAllAsync(`
+      SELECT t.*, c.name as customer_name 
+      FROM transactions t 
+      LEFT JOIN customers c ON t.customer_id = c.id 
+      ORDER BY t.created_at DESC
+    `);
+    return transactions;
+  } catch (error) {
+    console.error('Error getting transactions:', error);
+    return [];
+  }
 };
 
-export const getTransactions = () => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        `SELECT t.*, c.fullName as customerName 
-         FROM transactions t 
-         LEFT JOIN customers c ON t.customerId = c.id 
-         ORDER BY t.date DESC`,
-        [],
-        (_, result) => resolve(result.rows._array),
-        (_, error) => reject(error)
-      );
-    });
-  });
+export const getCustomerTransactions = async (customerId) => {
+  try {
+    const transactions = await db.getAllAsync(
+      'SELECT * FROM transactions WHERE customer_id = ? ORDER BY created_at DESC',
+      [customerId]
+    );
+    return transactions;
+  } catch (error) {
+    console.error('Error getting customer transactions:', error);
+    return [];
+  }
 };
 
-export const getCustomerTransactions = (customerId) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        'SELECT * FROM transactions WHERE customerId = ? ORDER BY date DESC',
-        [customerId],
-        (_, result) => resolve(result.rows._array),
-        (_, error) => reject(error)
+export const addTransaction = async (transaction) => {
+  try {
+    const result = await db.runAsync(
+      'INSERT INTO transactions (customer_id, type, amount, reference_note, payment_method) VALUES (?, ?, ?, ?, ?)',
+      [transaction.customer_id, transaction.type, transaction.amount, transaction.reference_note, transaction.payment_method]
+    );
+    
+    // Update customer balance
+    if (transaction.customer_id) {
+      const balanceChange = transaction.type === 'credit' ? transaction.amount : -transaction.amount;
+      await db.runAsync(
+        'UPDATE customers SET balance = balance + ? WHERE id = ?',
+        [balanceChange, transaction.customer_id]
       );
-    });
-  });
+    }
+    
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Error adding transaction:', error);
+    throw error;
+  }
 };
 
-export const getSalesData = () => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        `SELECT 
-           COUNT(*) as totalTransactions,
-           SUM(CASE WHEN type = 'sale' THEN amount ELSE 0 END) as totalSales,
-           SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) as totalCredits,
-           SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END) as totalDebits
-         FROM transactions`,
-        [],
-        (_, result) => resolve(result.rows._array[0]),
-        (_, error) => reject(error)
-      );
+export const checkout = async (customerId, paymentMethod = 'cash', referenceNote = '') => {
+  try {
+    const cartItems = await getCartItems();
+    if (cartItems.length === 0) {
+      throw new Error('Cart is empty');
+    }
+
+    const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Add sale transaction
+    await addTransaction({
+      customer_id: customerId,
+      type: 'sale',
+      amount: total,
+      reference_note: referenceNote,
+      payment_method: paymentMethod
     });
-  });
+
+    // Update product quantities
+    for (const item of cartItems) {
+      await db.runAsync(
+        'UPDATE products SET quantity = quantity - ? WHERE id = ?',
+        [item.quantity, item.product_id]
+      );
+    }
+
+    // Clear cart
+    await clearCart();
+
+    return total;
+  } catch (error) {
+    console.error('Error during checkout:', error);
+    throw error;
+  }
+};
+
+// Dashboard/Stats operations
+export const getDashboardStats = async () => {
+  try {
+    const totalCustomers = await db.getFirstAsync('SELECT COUNT(*) as count FROM customers');
+    const totalProducts = await db.getFirstAsync('SELECT COUNT(*) as count FROM products');
+    
+    const totalSales = await db.getFirstAsync(`
+      SELECT COALESCE(SUM(amount), 0) as total 
+      FROM transactions 
+      WHERE type = 'sale'
+    `);
+    
+    const outstandingBalance = await db.getFirstAsync(`
+      SELECT COALESCE(SUM(ABS(balance)), 0) as total 
+      FROM customers 
+      WHERE balance < 0
+    `);
+
+    return {
+      totalCustomers: totalCustomers.count,
+      totalProducts: totalProducts.count,
+      totalSales: totalSales.total,
+      outstandingBalance: outstandingBalance.total
+    };
+  } catch (error) {
+    console.error('Error getting dashboard stats:', error);
+    return {
+      totalCustomers: 0,
+      totalProducts: 0,
+      totalSales: 0,
+      outstandingBalance: 0
+    };
+  }
 };
