@@ -1,65 +1,41 @@
-import * as SQLite from 'expo-sqlite';
 
-let db = null;
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Storage keys
+const CUSTOMERS_KEY = 'customers';
+const PRODUCTS_KEY = 'products';
+const TRANSACTIONS_KEY = 'transactions';
+const CART_KEY = 'cart';
+
+// Helper functions for data management
+const generateId = () => Date.now().toString();
+
+const getStorageData = async (key) => {
+  try {
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error(`Error getting ${key}:`, error);
+    return [];
+  }
+};
+
+const setStorageData = async (key, data) => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error setting ${key}:`, error);
+    throw error;
+  }
+};
 
 export const initDatabase = async () => {
   try {
-    db = await SQLite.openDatabaseAsync('sales_calculator.db');
-
-    // Create customers table
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        phone TEXT,
-        email TEXT,
-        address TEXT,
-        image TEXT,
-        balance REAL DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // Create products table
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        price REAL NOT NULL,
-        quantity INTEGER NOT NULL DEFAULT 0,
-        description TEXT,
-        image TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // Create transactions table
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id INTEGER,
-        type TEXT NOT NULL,
-        amount REAL NOT NULL,
-        reference_note TEXT,
-        payment_method TEXT DEFAULT 'cash',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (customer_id) REFERENCES customers (id)
-      );
-    `);
-
-    // Create cart table
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS cart (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_id INTEGER,
-        quantity INTEGER NOT NULL DEFAULT 1,
-        FOREIGN KEY (product_id) REFERENCES products (id)
-      );
-    `);
-
-    // Insert sample data if tables are empty
-    await insertSampleData();
-
+    // Check if we have any data, if not insert sample data
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    if (customers.length === 0) {
+      await insertSampleData();
+    }
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -68,36 +44,60 @@ export const initDatabase = async () => {
 
 const insertSampleData = async () => {
   try {
-    // Check if we already have data
-    const customerCount = await db.getFirstAsync('SELECT COUNT(*) as count FROM customers');
-    if (customerCount.count > 0) return;
-
     // Insert sample customers
-    await db.runAsync(
-      'INSERT INTO customers (name, phone, email, address, balance) VALUES (?, ?, ?, ?, ?)',
-      ['John Doe', '+1234567890', 'john@example.com', '123 Main St', 150.00]
-    );
-
-    await db.runAsync(
-      'INSERT INTO customers (name, phone, email, address, balance) VALUES (?, ?, ?, ?, ?)',
-      ['Jane Smith', '+0987654321', 'jane@example.com', '456 Oak Ave', -50.00]
-    );
+    const sampleCustomers = [
+      {
+        id: generateId(),
+        name: 'John Doe',
+        phone: '+1234567890',
+        email: 'john@example.com',
+        address: '123 Main St',
+        balance: 150.00,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: generateId(),
+        name: 'Jane Smith',
+        phone: '+0987654321',
+        email: 'jane@example.com',
+        address: '456 Oak Ave',
+        balance: -50.00,
+        created_at: new Date().toISOString()
+      }
+    ];
 
     // Insert sample products
-    await db.runAsync(
-      'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
-      ['Laptop', 999.99, 10, 'High-performance laptop']
-    );
+    const sampleProducts = [
+      {
+        id: generateId(),
+        name: 'Laptop',
+        price: 999.99,
+        quantity: 10,
+        description: 'High-performance laptop',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: generateId(),
+        name: 'Mouse',
+        price: 29.99,
+        quantity: 25,
+        description: 'Wireless optical mouse',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: generateId(),
+        name: 'Keyboard',
+        price: 79.99,
+        quantity: 15,
+        description: 'Mechanical gaming keyboard',
+        created_at: new Date().toISOString()
+      }
+    ];
 
-    await db.runAsync(
-      'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
-      ['Mouse', 29.99, 25, 'Wireless optical mouse']
-    );
-
-    await db.runAsync(
-      'INSERT INTO products (name, price, quantity, description) VALUES (?, ?, ?, ?)',
-      ['Keyboard', 79.99, 15, 'Mechanical gaming keyboard']
-    );
+    await setStorageData(CUSTOMERS_KEY, sampleCustomers);
+    await setStorageData(PRODUCTS_KEY, sampleProducts);
+    await setStorageData(TRANSACTIONS_KEY, []);
+    await setStorageData(CART_KEY, []);
 
     console.log('Sample data inserted successfully');
   } catch (error) {
@@ -108,8 +108,8 @@ const insertSampleData = async () => {
 // Customer operations
 export const getCustomers = async () => {
   try {
-    const customers = await db.getAllAsync('SELECT * FROM customers ORDER BY created_at DESC');
-    return customers;
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    return customers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   } catch (error) {
     console.error('Error getting customers:', error);
     return [];
@@ -118,8 +118,8 @@ export const getCustomers = async () => {
 
 export const getCustomerById = async (id) => {
   try {
-    const customer = await db.getFirstAsync('SELECT * FROM customers WHERE id = ?', [id]);
-    return customer;
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    return customers.find(customer => customer.id === id) || null;
   } catch (error) {
     console.error('Error getting customer:', error);
     return null;
@@ -128,11 +128,16 @@ export const getCustomerById = async (id) => {
 
 export const addCustomer = async (customer) => {
   try {
-    const result = await db.runAsync(
-      'INSERT INTO customers (name, phone, email, address, image) VALUES (?, ?, ?, ?, ?)',
-      [customer.name, customer.phone, customer.email, customer.address, customer.image]
-    );
-    return result.lastInsertRowId;
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    const newCustomer = {
+      ...customer,
+      id: generateId(),
+      balance: 0,
+      created_at: new Date().toISOString()
+    };
+    customers.push(newCustomer);
+    await setStorageData(CUSTOMERS_KEY, customers);
+    return newCustomer.id;
   } catch (error) {
     console.error('Error adding customer:', error);
     throw error;
@@ -141,10 +146,12 @@ export const addCustomer = async (customer) => {
 
 export const updateCustomer = async (id, customer) => {
   try {
-    await db.runAsync(
-      'UPDATE customers SET name = ?, phone = ?, email = ?, address = ?, image = ? WHERE id = ?',
-      [customer.name, customer.phone, customer.email, customer.address, customer.image, id]
-    );
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    const index = customers.findIndex(c => c.id === id);
+    if (index !== -1) {
+      customers[index] = { ...customers[index], ...customer };
+      await setStorageData(CUSTOMERS_KEY, customers);
+    }
   } catch (error) {
     console.error('Error updating customer:', error);
     throw error;
@@ -153,7 +160,9 @@ export const updateCustomer = async (id, customer) => {
 
 export const deleteCustomer = async (id) => {
   try {
-    await db.runAsync('DELETE FROM customers WHERE id = ?', [id]);
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    const filteredCustomers = customers.filter(c => c.id !== id);
+    await setStorageData(CUSTOMERS_KEY, filteredCustomers);
   } catch (error) {
     console.error('Error deleting customer:', error);
     throw error;
@@ -163,8 +172,8 @@ export const deleteCustomer = async (id) => {
 // Product operations
 export const getProducts = async () => {
   try {
-    const products = await db.getAllAsync('SELECT * FROM products ORDER BY created_at DESC');
-    return products;
+    const products = await getStorageData(PRODUCTS_KEY);
+    return products.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   } catch (error) {
     console.error('Error getting products:', error);
     return [];
@@ -173,8 +182,8 @@ export const getProducts = async () => {
 
 export const getProductById = async (id) => {
   try {
-    const product = await db.getFirstAsync('SELECT * FROM products WHERE id = ?', [id]);
-    return product;
+    const products = await getStorageData(PRODUCTS_KEY);
+    return products.find(product => product.id === id) || null;
   } catch (error) {
     console.error('Error getting product:', error);
     return null;
@@ -183,11 +192,15 @@ export const getProductById = async (id) => {
 
 export const addProduct = async (product) => {
   try {
-    const result = await db.runAsync(
-      'INSERT INTO products (name, price, quantity, description, image) VALUES (?, ?, ?, ?, ?)',
-      [product.name, product.price, product.quantity, product.description, product.image]
-    );
-    return result.lastInsertRowId;
+    const products = await getStorageData(PRODUCTS_KEY);
+    const newProduct = {
+      ...product,
+      id: generateId(),
+      created_at: new Date().toISOString()
+    };
+    products.push(newProduct);
+    await setStorageData(PRODUCTS_KEY, products);
+    return newProduct.id;
   } catch (error) {
     console.error('Error adding product:', error);
     throw error;
@@ -196,10 +209,12 @@ export const addProduct = async (product) => {
 
 export const updateProduct = async (id, product) => {
   try {
-    await db.runAsync(
-      'UPDATE products SET name = ?, price = ?, quantity = ?, description = ?, image = ? WHERE id = ?',
-      [product.name, product.price, product.quantity, product.description, product.image, id]
-    );
+    const products = await getStorageData(PRODUCTS_KEY);
+    const index = products.findIndex(p => p.id === id);
+    if (index !== -1) {
+      products[index] = { ...products[index], ...product };
+      await setStorageData(PRODUCTS_KEY, products);
+    }
   } catch (error) {
     console.error('Error updating product:', error);
     throw error;
@@ -208,7 +223,9 @@ export const updateProduct = async (id, product) => {
 
 export const deleteProduct = async (id) => {
   try {
-    await db.runAsync('DELETE FROM products WHERE id = ?', [id]);
+    const products = await getStorageData(PRODUCTS_KEY);
+    const filteredProducts = products.filter(p => p.id !== id);
+    await setStorageData(PRODUCTS_KEY, filteredProducts);
   } catch (error) {
     console.error('Error deleting product:', error);
     throw error;
@@ -218,12 +235,19 @@ export const deleteProduct = async (id) => {
 // Cart operations
 export const getCartItems = async () => {
   try {
-    const items = await db.getAllAsync(`
-      SELECT c.*, p.name, p.price, p.description, p.image 
-      FROM cart c 
-      JOIN products p ON c.product_id = p.id
-    `);
-    return items;
+    const cart = await getStorageData(CART_KEY);
+    const products = await getStorageData(PRODUCTS_KEY);
+    
+    return cart.map(item => {
+      const product = products.find(p => p.id === item.product_id);
+      return {
+        ...item,
+        name: product?.name || 'Unknown Product',
+        price: product?.price || 0,
+        description: product?.description || '',
+        image: product?.image || null
+      };
+    });
   } catch (error) {
     console.error('Error getting cart items:', error);
     return [];
@@ -232,20 +256,20 @@ export const getCartItems = async () => {
 
 export const addToCart = async (productId, quantity = 1) => {
   try {
-    // Check if item already exists in cart
-    const existingItem = await db.getFirstAsync('SELECT * FROM cart WHERE product_id = ?', [productId]);
+    const cart = await getStorageData(CART_KEY);
+    const existingItem = cart.find(item => item.product_id === productId);
 
     if (existingItem) {
-      await db.runAsync(
-        'UPDATE cart SET quantity = quantity + ? WHERE product_id = ?',
-        [quantity, productId]
-      );
+      existingItem.quantity += quantity;
     } else {
-      await db.runAsync(
-        'INSERT INTO cart (product_id, quantity) VALUES (?, ?)',
-        [productId, quantity]
-      );
+      cart.push({
+        id: generateId(),
+        product_id: productId,
+        quantity
+      });
     }
+
+    await setStorageData(CART_KEY, cart);
   } catch (error) {
     console.error('Error adding to cart:', error);
     throw error;
@@ -254,10 +278,17 @@ export const addToCart = async (productId, quantity = 1) => {
 
 export const updateCartItem = async (id, quantity) => {
   try {
+    const cart = await getStorageData(CART_KEY);
+    
     if (quantity <= 0) {
-      await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
+      const filteredCart = cart.filter(item => item.id !== id);
+      await setStorageData(CART_KEY, filteredCart);
     } else {
-      await db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [quantity, id]);
+      const index = cart.findIndex(item => item.id === id);
+      if (index !== -1) {
+        cart[index].quantity = quantity;
+        await setStorageData(CART_KEY, cart);
+      }
     }
   } catch (error) {
     console.error('Error updating cart item:', error);
@@ -267,7 +298,9 @@ export const updateCartItem = async (id, quantity) => {
 
 export const removeFromCart = async (id) => {
   try {
-    await db.runAsync('DELETE FROM cart WHERE id = ?', [id]);
+    const cart = await getStorageData(CART_KEY);
+    const filteredCart = cart.filter(item => item.id !== id);
+    await setStorageData(CART_KEY, filteredCart);
   } catch (error) {
     console.error('Error removing from cart:', error);
     throw error;
@@ -276,7 +309,7 @@ export const removeFromCart = async (id) => {
 
 export const clearCart = async () => {
   try {
-    await db.runAsync('DELETE FROM cart');
+    await setStorageData(CART_KEY, []);
   } catch (error) {
     console.error('Error clearing cart:', error);
     throw error;
@@ -286,13 +319,16 @@ export const clearCart = async () => {
 // Transaction operations
 export const getTransactions = async () => {
   try {
-    const transactions = await db.getAllAsync(`
-      SELECT t.*, c.name as customer_name 
-      FROM transactions t 
-      LEFT JOIN customers c ON t.customer_id = c.id 
-      ORDER BY t.created_at DESC
-    `);
-    return transactions;
+    const transactions = await getStorageData(TRANSACTIONS_KEY);
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    
+    return transactions.map(transaction => {
+      const customer = customers.find(c => c.id === transaction.customer_id);
+      return {
+        ...transaction,
+        customer_name: customer?.name || 'Unknown Customer'
+      };
+    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   } catch (error) {
     console.error('Error getting transactions:', error);
     return [];
@@ -301,11 +337,10 @@ export const getTransactions = async () => {
 
 export const getCustomerTransactions = async (customerId) => {
   try {
-    const transactions = await db.getAllAsync(
-      'SELECT * FROM transactions WHERE customer_id = ? ORDER BY created_at DESC',
-      [customerId]
-    );
-    return transactions;
+    const transactions = await getStorageData(TRANSACTIONS_KEY);
+    return transactions
+      .filter(t => t.customer_id === customerId)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   } catch (error) {
     console.error('Error getting customer transactions:', error);
     return [];
@@ -314,21 +349,28 @@ export const getCustomerTransactions = async (customerId) => {
 
 export const addTransaction = async (transaction) => {
   try {
-    const result = await db.runAsync(
-      'INSERT INTO transactions (customer_id, type, amount, reference_note, payment_method) VALUES (?, ?, ?, ?, ?)',
-      [transaction.customer_id, transaction.type, transaction.amount, transaction.reference_note, transaction.payment_method]
-    );
+    const transactions = await getStorageData(TRANSACTIONS_KEY);
+    const newTransaction = {
+      ...transaction,
+      id: generateId(),
+      created_at: new Date().toISOString()
+    };
+    
+    transactions.push(newTransaction);
+    await setStorageData(TRANSACTIONS_KEY, transactions);
 
     // Update customer balance
     if (transaction.customer_id) {
-      const balanceChange = transaction.type === 'credit' ? transaction.amount : -transaction.amount;
-      await db.runAsync(
-        'UPDATE customers SET balance = balance + ? WHERE id = ?',
-        [balanceChange, transaction.customer_id]
-      );
+      const customers = await getStorageData(CUSTOMERS_KEY);
+      const customerIndex = customers.findIndex(c => c.id === transaction.customer_id);
+      if (customerIndex !== -1) {
+        const balanceChange = transaction.type === 'credit' ? transaction.amount : -transaction.amount;
+        customers[customerIndex].balance += balanceChange;
+        await setStorageData(CUSTOMERS_KEY, customers);
+      }
     }
 
-    return result.lastInsertRowId;
+    return newTransaction.id;
   } catch (error) {
     console.error('Error adding transaction:', error);
     throw error;
@@ -354,12 +396,14 @@ export const checkout = async (customerId, paymentMethod = 'cash', referenceNote
     });
 
     // Update product quantities
+    const products = await getStorageData(PRODUCTS_KEY);
     for (const item of cartItems) {
-      await db.runAsync(
-        'UPDATE products SET quantity = quantity - ? WHERE id = ?',
-        [item.quantity, item.product_id]
-      );
+      const productIndex = products.findIndex(p => p.id === item.product_id);
+      if (productIndex !== -1) {
+        products[productIndex].quantity -= item.quantity;
+      }
     }
+    await setStorageData(PRODUCTS_KEY, products);
 
     // Clear cart
     await clearCart();
@@ -374,26 +418,23 @@ export const checkout = async (customerId, paymentMethod = 'cash', referenceNote
 // Dashboard/Stats operations
 export const getDashboardStats = async () => {
   try {
-    const totalCustomers = await db.getFirstAsync('SELECT COUNT(*) as count FROM customers');
-    const totalProducts = await db.getFirstAsync('SELECT COUNT(*) as count FROM products');
+    const customers = await getStorageData(CUSTOMERS_KEY);
+    const products = await getStorageData(PRODUCTS_KEY);
+    const transactions = await getStorageData(TRANSACTIONS_KEY);
 
-    const totalSales = await db.getFirstAsync(`
-      SELECT COALESCE(SUM(amount), 0) as total 
-      FROM transactions 
-      WHERE type = 'sale'
-    `);
+    const totalSales = transactions
+      .filter(t => t.type === 'sale')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-    const outstandingBalance = await db.getFirstAsync(`
-      SELECT COALESCE(SUM(ABS(balance)), 0) as total 
-      FROM customers 
-      WHERE balance < 0
-    `);
+    const outstandingBalance = customers
+      .filter(c => c.balance < 0)
+      .reduce((sum, c) => sum + Math.abs(c.balance), 0);
 
     return {
-      totalCustomers: totalCustomers.count,
-      totalProducts: totalProducts.count,
-      totalSales: totalSales.total,
-      outstandingBalance: outstandingBalance.total
+      totalCustomers: customers.length,
+      totalProducts: products.length,
+      totalSales,
+      outstandingBalance
     };
   } catch (error) {
     console.error('Error getting dashboard stats:', error);
