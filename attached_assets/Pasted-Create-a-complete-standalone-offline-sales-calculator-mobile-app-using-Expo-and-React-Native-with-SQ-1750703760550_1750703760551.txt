@@ -1,0 +1,60 @@
+Create a complete standalone offline sales calculator mobile app using Expo and React Native with SQLite as the local database. The app should not connect to the internet or Replit's backend services.
+
+Functional Requirements:
+Customer Details Management
+
+Add, edit, delete, view customer profiles
+Fields: Full Name, Phone Number, Email, Address, Profile Image (optional)
+Store locally in SQLite
+Customer Transactions
+
+Record Debit, Credit, Outstanding Balance
+View full transaction history per customer
+Support payment by installment:
+Each payment must store: Amount, Date, Reference Note, Method of Payment, Associated Product/Cart
+Product Management
+
+CRUD operations for products
+Fields: Product Name, Price, Quantity, Description, Image
+Image should be taken via phone camera or selected from local storage
+Store all data in SQLite, including base64/URI path for images
+Cart System
+
+Add, edit, delete products in cart
+Calculate total price dynamically
+Checkout option saves transaction to SQLite and associates it with a customer and payment method
+Auto-update stock quantity when product is sold
+Image Capture
+
+Use Expo Camera and ImagePicker for:
+Capturing product photos
+Choosing existing images from device storage
+UI/UX
+
+Use React Navigation for navigation
+Home screen with tabs:
+Dashboard (Sales summary)
+Customers
+Products
+Cart
+Transactions
+Data Storage
+
+Use SQLite for all data
+No internet requirement (all offline)
+All records (customers, products, transactions) should persist using SQLite
+Technical Stack
+
+Expo SDK
+React Native
+SQLite (Expo SQLite module)
+React Navigation
+Expo Camera & ImagePicker
+No external server
+Modular file structure
+Expected Project Structure:
+Bonus:
+Include sample dummy data to test UI
+Add styling using basic StyleSheet API
+Support for dark and light mode (optional)
+This app must run entirely offline and compile to a standalone .apk or .aab using eas build. Do not rely on internet access or backend APIs.
